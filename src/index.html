@@ -118,6 +118,7 @@ function populateMap() {
     data: collisions,
     buffer: 0,
   });
+  // TODO: add clustered data source with radius 30
   map.addLayer({
     id: 'collisionsHeatmap',
     source: 'collisions',
@@ -162,11 +163,14 @@ function populateMap() {
     },
   });
   map.addLayer({
+    // TODO: rename to 'collisionsClustered'
     id: 'collisionsPoints',
+    // TODO: use 'collisionsClustered' source
     source: 'collisions',
     type: 'circle',
     minzoom: ZOOM_LEVEL_1,
     maxzoom: ZOOM_LEVEL_3,
+    // TODO: filter to only clusters (i.e. features with 'point_count')
     paint: {
       'circle-color': COLOR_COLLISION_FILL,
       'circle-opacity': [
@@ -176,6 +180,7 @@ function populateMap() {
         ZOOM_LEVEL_1, 0,
         ZOOM_LEVEL_1 + 1, 1,
       ],
+      // TODO: use 'step' to adjust radius based on 'point_count'
       'circle-radius': 6.5,
       'circle-stroke-color': COLOR_COLLISION_STROKE,
       'circle-stroke-width': 1,

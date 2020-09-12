@@ -42,6 +42,7 @@ const BOUNDS_TORONTO = new mapboxgl.LngLatBounds(
   new mapboxgl.LngLat(-79.639264937, 43.580995995),
   new mapboxgl.LngLat(-79.115243191, 43.855457183),
 );
+// TODO: create color variables for circles, heatmap here
 const ZOOM_LEVEL_0 = 10;
 const ZOOM_LEVEL_3 = 19;
 
@@ -114,16 +115,21 @@ function populateMap() {
     buffer: 0,
   });
   map.addLayer({
+    // TODO: rename this to 'collisionsHeatmap'
     id: 'collisionsPoints',
     source: 'collisions',
+    // TODO: change type to 'heatmap'
     type: 'circle',
     minzoom: ZOOM_LEVEL_0,
     maxzoom: ZOOM_LEVEL_3,
     paint: {
+      // TODO: rename to 'heatmap-color', and set to fill colour above
       'circle-color': '#ef4848',
+      // TODO: get rid of these
       'circle-radius': 6.5,
       'circle-stroke-color': '#773333',
       'circle-stroke-width': 1,
+      // TODO: add 'heatmap-weight', and set to 0.03
     },
   });
 }

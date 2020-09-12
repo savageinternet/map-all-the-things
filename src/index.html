@@ -25,25 +25,12 @@ html, body, main, #map_container {
 #map_container {
   background-color: deeppink;
 }
-
-/* TODO: get rid of this! */
-h1 {
-  color: white;
-  font-size: 6rem;
-  margin: 0;
-  padding-top: 200px;
-  text-align: center;
-}
 </style>
 </head>
 <body>
 
 <main>
-  <div id="map_container">
-
-    <!-- TODO: get rid of this! -->
-    <h1>MY EYES, THEY HURT</h1>
-  </div>
+  <div id="map_container"></div>
 </main>
 
 <script>
@@ -90,17 +77,17 @@ async function initMapbox() {
 }
 
 function initMap() {
-  // TODO: get reference to container
+  const $mapContainer = document.getElementById('map_container');
 
   const options = {
-    // TODO: attach container
+    container: $mapContainer,
     dragRotate: false,
     pitchWithRotate: false,
     renderWorldCopies: true,
     style: basemapStyle,
   };
 
-  // TODO: initialize map
+  map = new mapboxgl.Map(options);
 }
 
 async function main() {

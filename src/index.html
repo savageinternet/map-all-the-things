@@ -146,8 +146,11 @@ function populateMap() {
         ZOOM_LEVEL_0, 5,
         ZOOM_LEVEL_1, 10,
       ],
-      // TODO: use a 'case' expression with the 'ksi' property to focus on serious collisions
-      'heatmap-weight': 0.03,
+      'heatmap-weight': [
+        'case',
+        ['get', 'ksi'], 3,
+        0.03,
+      ],
     },
   });
 }

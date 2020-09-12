@@ -35,6 +35,7 @@ html, body, main, #map_container {
 
 <script>
 let basemapStyle = null;
+// TODO: add global variable for collision data
 let map = null;
 
 const BOUNDS_TORONTO = new mapboxgl.LngLatBounds(
@@ -73,14 +74,17 @@ function getStyle(metadata, root) {
 
 async function initMapbox() {
   const [
+    // TODO: pull collision data out into a variable
     metadata,
     root,
   ] = await Promise.all([
+    // TODO: fetch collision data
     getJson('data/metadata.json'),
     getJson('data/root.json'),
   ]);
 
   basemapStyle = getStyle(metadata, root);
+  // TODO: set global collision data variable
 }
 
 function initMap() {
@@ -100,7 +104,11 @@ function initMap() {
   };
 
   map = new mapboxgl.Map(options);
+  // TODO: add a handler for the 'load' event
 }
+
+// TODO: add a function to handle the 'load' event
+// TODO: in that function, log collision data to the console
 
 async function main() {
   await initMapbox();

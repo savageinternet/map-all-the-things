@@ -46,7 +46,7 @@ const COLOR_COLLISION_HEATMAP_ZERO = 'rgba(244, 227, 219, 0)';
 const COLOR_COLLISION_HEATMAP_HALF = '#f39268';
 const COLOR_COLLISION_FILL = '#ef4848';
 const ZOOM_LEVEL_0 = 10;
-// TODO: add a zoom level breakpoint at zoom level 14!
+const ZOOM_LEVEL_1 = 14;
 const ZOOM_LEVEL_3 = 19;
 
 async function getJson(url) {
@@ -132,8 +132,20 @@ function populateMap() {
         0.5, COLOR_COLLISION_HEATMAP_HALF,
         1, COLOR_COLLISION_FILL,
       ],
-      // TODO: add 'heatmap-intensity', and use an 'interpolate' expression on 'zoom'
-      // TODO: add 'heatmap-radius', and use an 'interpolate' expression on 'zoom'
+      'heatmap-intensity': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        ZOOM_LEVEL_0, 0.33,
+        ZOOM_LEVEL_1, 1,
+      ],
+      'heatmap-radius': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        ZOOM_LEVEL_0, 5,
+        ZOOM_LEVEL_1, 10,
+      ],
       'heatmap-weight': 0.03,
     },
   });

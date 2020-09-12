@@ -1,0 +1,114 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<title>Map All The Things With Mapbox GL</title>
+
+<!-- Mapbox GL -->
+<script src='https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.js'></script>
+<link href='https://api.mapbox.com/mapbox-gl-js/v1.12.0/mapbox-gl.css' rel='stylesheet' />
+
+<style>
+html, body {
+  font-family: Helvetica, Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, main, #map_container {
+  height: 100%;
+  width: 100%;
+}
+
+#map_container {
+  background-color: deeppink;
+}
+
+/* TODO: get rid of this! */
+h1 {
+  color: white;
+  font-size: 6rem;
+  margin: 0;
+  padding-top: 200px;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+
+<main>
+  <div id="map_container">
+
+    <!-- TODO: get rid of this! -->
+    <h1>MY EYES, THEY HURT</h1>
+  </div>
+</main>
+
+<script>
+let basemapStyle = null;
+let map = null;
+
+async function getJson(url) {
+  const response = await fetch(url);
+  return response.json();
+}
+
+/**
+ * Converts ESRI map styles to a Mapbox GL-compatible format.
+ *
+ * @see https://gist.github.com/jgravois/51e2b30e3d6cf6c00f06b263a29108a2
+ */
+function getStyle(metadata, root) {
+  const style = JSON.parse(JSON.stringify(root));
+  style.sources.esri = {
+    type: 'vector',
+    scheme: 'xyz',
+    tilejson: metadata.tilejson || '2.0.0',
+    format: (metadata.tileInfo && metadata.tileInfo.format) || 'pbf',
+    maxzoom: 15,
+    tiles: [
+      `${style.sources.esri.url}${metadata.tiles[0]}`,
+    ],
+    description: metadata.description || '',
+    name: metadata.name,
+  };
+  return style;
+}
+
+async function initMapbox() {
+  const [
+    metadata,
+    root,
+  ] = await Promise.all([
+    getJson('data/metadata.json'),
+    getJson('data/root.json'),
+  ]);
+
+  basemapStyle = getStyle(metadata, root);
+}
+
+function initMap() {
+  // TODO: get reference to container
+
+  const options = {
+    // TODO: attach container
+    dragRotate: false,
+    pitchWithRotate: false,
+    renderWorldCopies: true,
+    style: basemapStyle,
+  };
+
+  // TODO: initialize map
+}
+
+async function main() {
+  await initMapbox();
+  initMap();
+}
+
+main();
+</script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "name": "map-all-the-things",
+  "version": "1.0.0",
+  "description": "Map all the Things with Mapbox GL!",
+  "main": "index.js",
+  "scripts": {
+    "serve": "http-server src -a 127.0.0.1 -c-1 -p 4326"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/savageinternet/map-all-the-things.git"
+  },
+  "author": "Evan Savage",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/savageinternet/map-all-the-things/issues"
+  },
+  "homepage": "https://github.com/savageinternet/map-all-the-things#readme",
+  "devDependencies": {
+    "http-server": "^0.12.3"
+  }
+}

@@ -37,8 +37,12 @@ html, body, main, #map_container {
 let basemapStyle = null;
 let map = null;
 
-// TODO: add Toronto city bounding box
-// TODO: add zoom "breakpoints"
+const BOUNDS_TORONTO = new mapboxgl.LngLatBounds(
+  new mapboxgl.LngLat(-79.639264937, 43.580995995),
+  new mapboxgl.LngLat(-79.115243191, 43.855457183),
+);
+const ZOOM_LEVEL_0 = 10;
+const ZOOM_LEVEL_3 = 19;
 
 async function getJson(url) {
   const response = await fetch(url);
@@ -84,16 +88,15 @@ function initMap() {
 
   const options = {
     container: $mapContainer,
-    // TODO: center
+    center: BOUNDS_TORONTO.getCenter(),
     dragRotate: false,
-    // TODO: maxBounds
-    // TODO: maxZoom
-    // TODO: minZoom
+    maxBounds: BOUNDS_TORONTO,
+    maxZoom: ZOOM_LEVEL_3,
+    minZoom: ZOOM_LEVEL_0,
     pitchWithRotate: false,
-    // TODO: set this to false
-    renderWorldCopies: true,
+    renderWorldCopies: false,
     style: basemapStyle,
-    // TODO: zoom (initial level)
+    zoom: ZOOM_LEVEL_0,
   };
 
   map = new mapboxgl.Map(options);

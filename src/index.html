@@ -122,6 +122,7 @@ function populateMap() {
     source: 'collisions',
     type: 'heatmap',
     minzoom: ZOOM_LEVEL_0,
+    // TODO: change this to `ZOOM_LEVEL_1 + 1`
     maxzoom: ZOOM_LEVEL_3,
     paint: {
       'heatmap-color': [
@@ -139,6 +140,7 @@ function populateMap() {
         ZOOM_LEVEL_0, 0.33,
         ZOOM_LEVEL_1, 1,
       ],
+      // TODO: add 'heatmap-opacity', ramp out from `ZOOM_LEVEL_1` to `ZOOM_LEVEL_1 + 1`
       'heatmap-radius': [
         'interpolate',
         ['linear'],
@@ -153,6 +155,8 @@ function populateMap() {
       ],
     },
   });
+  // TODO: add a 'collisionsPoints' layer back in, but only from `ZOOM_LEVEL_1` to `ZOOM_LEVEL_3`
+  // TODO: add `circle-opacity`, ramp in from `ZOOM_LEVEL_1` to `ZOOM_LEVEL_1 + 1`
 }
 
 async function main() {

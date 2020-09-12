@@ -196,8 +196,43 @@ function populateMap() {
       'circle-stroke-width': 1,
     },
   });
-  // TODO: add 'symbol' layer using 'point_count_abbreviated'
-  // TODO: add layer for unclustered points
+  map.addLayer({
+    id: 'collisionsClusteredCount',
+    source: 'collisionsClustered',
+    type: 'symbol',
+    minzoom: ZOOM_LEVEL_1,
+    maxzoom: ZOOM_LEVEL_3,
+    filter: ['has', 'point_count'],
+    layout: {
+      'text-field': '{point_count_abbreviated}',
+      'text-font': ['literal', ['Ubuntu Regular']],
+      'text-size': 12
+    },
+    paint: {
+      'text-color': COLOR_COLLISION_STROKE,
+    }
+  });
+  map.addLayer({
+    id: 'collisionsUnclustered',
+    source: 'collisionsClustered',
+    type: 'circle',
+    minzoom: ZOOM_LEVEL_1,
+    maxzoom: ZOOM_LEVEL_3,
+    filter: ['!', ['has', 'point_count']],
+    paint: {
+      'circle-color': COLOR_COLLISION_FILL,
+      'circle-opacity': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        ZOOM_LEVEL_1, 0,
+        ZOOM_LEVEL_1 + 1, 1,
+      ],
+      'circle-radius': 4,
+      'circle-stroke-color': COLOR_COLLISION_STROKE,
+      'circle-stroke-width': 1,
+    },
+  });
 }
 
 async function main() {

@@ -108,12 +108,24 @@ function initMap() {
 }
 
 function populateMap() {
-  // TODO: remove this logging statement
-  console.log(collisions);
-
-  // TODO: add a GeoJSON source
-
-  // TODO: add a layer using that source
+  map.addSource('collisions', {
+    type: 'geojson',
+    data: collisions,
+    buffer: 0,
+  });
+  map.addLayer({
+    id: 'collisionsPoints',
+    source: 'collisions',
+    type: 'circle',
+    minzoom: ZOOM_LEVEL_0,
+    maxzoom: ZOOM_LEVEL_3,
+    paint: {
+      'circle-color': '#ef4848',
+      'circle-radius': 6.5,
+      'circle-stroke-color': '#773333',
+      'circle-stroke-width': 1,
+    },
+  });
 }
 
 async function main() {

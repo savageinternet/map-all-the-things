@@ -37,6 +37,9 @@ html, body, main, #map_container {
 let basemapStyle = null;
 let map = null;
 
+// TODO: add Toronto city bounding box
+// TODO: add zoom "breakpoints"
+
 async function getJson(url) {
   const response = await fetch(url);
   return response.json();
@@ -81,10 +84,16 @@ function initMap() {
 
   const options = {
     container: $mapContainer,
+    // TODO: center
     dragRotate: false,
+    // TODO: maxBounds
+    // TODO: maxZoom
+    // TODO: minZoom
     pitchWithRotate: false,
+    // TODO: set this to false
     renderWorldCopies: true,
     style: basemapStyle,
+    // TODO: zoom (initial level)
   };
 
   map = new mapboxgl.Map(options);

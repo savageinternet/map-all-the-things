@@ -42,7 +42,8 @@ const BOUNDS_TORONTO = new mapboxgl.LngLatBounds(
   new mapboxgl.LngLat(-79.639264937, 43.580995995),
   new mapboxgl.LngLat(-79.115243191, 43.855457183),
 );
-// TODO: add two more colors for the heatmap color ramp
+const COLOR_COLLISION_HEATMAP_ZERO = 'rgba(244, 227, 219, 0)';
+const COLOR_COLLISION_HEATMAP_HALF = '#f39268';
 const COLOR_COLLISION_FILL = '#ef4848';
 const ZOOM_LEVEL_0 = 10;
 const ZOOM_LEVEL_3 = 19;
@@ -122,8 +123,14 @@ function populateMap() {
     minzoom: ZOOM_LEVEL_0,
     maxzoom: ZOOM_LEVEL_3,
     paint: {
-      // TODO: use 'interpolate', 'linear', and 'heatmap-density' to create a color ramp
-      'heatmap-color': COLOR_COLLISION_FILL,
+      'heatmap-color': [
+        'interpolate',
+        ['linear'],
+        ['heatmap-density'],
+        0, COLOR_COLLISION_HEATMAP_ZERO,
+        0.5, COLOR_COLLISION_HEATMAP_HALF,
+        1, COLOR_COLLISION_FILL,
+      ],
       'heatmap-weight': 0.03,
     },
   });

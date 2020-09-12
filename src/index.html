@@ -45,6 +45,7 @@ const BOUNDS_TORONTO = new mapboxgl.LngLatBounds(
 const COLOR_COLLISION_HEATMAP_ZERO = 'rgba(244, 227, 219, 0)';
 const COLOR_COLLISION_HEATMAP_HALF = '#f39268';
 const COLOR_COLLISION_FILL = '#ef4848';
+const COLOR_COLLISION_STROKE = '#773333';
 const ZOOM_LEVEL_0 = 10;
 const ZOOM_LEVEL_1 = 14;
 const ZOOM_LEVEL_3 = 19;
@@ -122,8 +123,7 @@ function populateMap() {
     source: 'collisions',
     type: 'heatmap',
     minzoom: ZOOM_LEVEL_0,
-    // TODO: change this to `ZOOM_LEVEL_1 + 1`
-    maxzoom: ZOOM_LEVEL_3,
+    maxzoom: ZOOM_LEVEL_1 + 1,
     paint: {
       'heatmap-color': [
         'interpolate',
@@ -140,7 +140,13 @@ function populateMap() {
         ZOOM_LEVEL_0, 0.33,
         ZOOM_LEVEL_1, 1,
       ],
-      // TODO: add 'heatmap-opacity', ramp out from `ZOOM_LEVEL_1` to `ZOOM_LEVEL_1 + 1`
+      'heatmap-opacity': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        ZOOM_LEVEL_1, 1,
+        ZOOM_LEVEL_1 + 1, 0,
+      ],
       'heatmap-radius': [
         'interpolate',
         ['linear'],
@@ -155,8 +161,26 @@ function populateMap() {
       ],
     },
   });
-  // TODO: add a 'collisionsPoints' layer back in, but only from `ZOOM_LEVEL_1` to `ZOOM_LEVEL_3`
-  // TODO: add `circle-opacity`, ramp in from `ZOOM_LEVEL_1` to `ZOOM_LEVEL_1 + 1`
+  map.addLayer({
+    id: 'collisionsPoints',
+    source: 'collisions',
+    type: 'circle',
+    minzoom: ZOOM_LEVEL_1,
+    maxzoom: ZOOM_LEVEL_3,
+    paint: {
+      'circle-color': COLOR_COLLISION_FILL,
+      'circle-opacity': [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        ZOOM_LEVEL_1, 0,
+        ZOOM_LEVEL_1 + 1, 1,
+      ],
+      'circle-radius': 6.5,
+      'circle-stroke-color': COLOR_COLLISION_STROKE,
+      'circle-stroke-width': 1,
+    },
+  });
 }
 
 async function main() {

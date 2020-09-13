@@ -18,12 +18,13 @@ You'll get more out of this session if you have some experience with frontend (H
 git clone https://github.com/savageinternet/map-all-the-things.git
 cd map-all-the-things
 
-# if you don't have nvm:
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash
+git checkout start-here
 
-nvm install
-nvm use
+npm install
+npm run serve
 ```
+
+This repository also includes a `.code-workspace` file for use with Visual Studio Code, as well as an `.nvmrc` file in case you're using `nvm`.
 
 # Step-by-Step
 
@@ -38,10 +39,7 @@ eye-searing-ness and initialize the map properly!
 Let's start by getting rid of that `<h1>` element:
 
 ```html
-<div id="map_container">
-  <!-- TODO: get rid of this! -->
-  <h1>MY EYES, THEY HURT</h1>
-</div>
+<div id="map_container"></div>
 ```
 
 Like other mapping libraries, Mapbox GL needs a _container element_ for its map.  In our case, that's `#map_container`, which has been styled in CSS to take up the whole page width and height.  We get a reference to this container, then attach it in options and initialize the map:
@@ -426,7 +424,42 @@ priority.
 To get to the next step, you have to give KSI collisions the importance
 they deserve by _dramatically_ increasing their weight.
 
-Step 3d complete: point weighting in heatmaps
+Set `heatmap-weight` as follows:
+
+```js
+'heatmap-weight': [
+  'case',
+  ['get', 'ksi'], 3,
+  0.03,
+],
+```
+
+OK!  We've got two new operators in here: `case` and `get`.  `case` is Mapbox GL's if-then-else block; we can read this expression as "if `['get', 'ksi']`, then return `3`, else return `0.03`".  `get` is a _property accessor_ operator: for each data point, `['get', 'ksi']` returns the value of the `ksi` property.  To see what that means, we can take a quick look at `collisions.geojson`:
+
+```json
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "id": 1742504,
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -79.448825,
+          43.638223
+        ]
+      },
+      "properties": {
+        "ksi": false,
+        "cyclist": false,
+        "pedestrian": false
+      }
+    },
+    // ...
+```
+
+`['get', 'ksi']` pulls out that `ksi` property.  We could just as easily do `['get', 'cyclist']`, or `['get', 'pedestrian']`, depending on what we want to show in our map.
 
 Phew - you made it.  By tweaking the various parameters of heatmap
 layers, you've created a heatmap that better represents the data, and
@@ -445,7 +478,50 @@ To get to the next step, you have to set up another layer for points,
 then use style expressions to crossfade between the heatmap and
 individual points as the user zooms in.
 
-Step 4a complete: heatmap and points!
+When a DJ crossfades two tracks, there's a period of time where both tracks are playing.  Similarly, to crossfade over zoom levels, we need a zoom level where both the heatmap and the points are visible!  To do this, we'll show the heatmap for one additional zoom level by changing `maxzoom`:
+
+```js
+maxzoom: ZOOM_LEVEL_1 + 1,
+```
+
+Now we need the _fade_ part, for which we'll use `heatmap-opacity`:
+
+```js
+'heatmap-opacity': [
+  'interpolate',
+  ['linear'],
+  ['zoom'],
+  ZOOM_LEVEL_1, 1,
+  ZOOM_LEVEL_1 + 1, 0,
+],
+```
+
+There's that `interpolate` / `zoom` combo again!  OK, so we're fading out our heatmap, but what are we fading in?  We need a second layer for our points:
+
+```js
+map.addLayer({
+  id: 'collisionsPoints',
+  source: 'collisions',
+  type: 'circle',
+  minzoom: ZOOM_LEVEL_1,
+  maxzoom: ZOOM_LEVEL_3,
+  paint: {
+    'circle-color': COLOR_COLLISION_FILL,
+    'circle-opacity': [
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      ZOOM_LEVEL_1, 0,
+      ZOOM_LEVEL_1 + 1, 1,
+    ],
+    'circle-radius': 6.5,
+    'circle-stroke-color': COLOR_COLLISION_STROKE,
+    'circle-stroke-width': 1,
+  },
+});
+```
+
+And there's the fade in effect!  Between `ZOOM_LEVEL_1` and `ZOOM_LEVEL_1 + 1`, our heatmap will fade out while our points fade in.
 
 Yay!  You made your first map with more than one layer, and you've even
 set up a cool crossfade effect between those layers as you zoom in.
@@ -464,7 +540,56 @@ take a bit of work, but it's worth it!
 To get to the next step, you have to add a clustered data source for
 collisions, then update our points layer to use that data source.
 
-Step 4b complete: clustering
+Clustered data sources are another piece of magic available out-of-the-box in Mapbox GL:
+
+```js
+map.addSource('collisionsClustered', {
+  type: 'geojson',
+  data: collisions,
+  cluster: true,
+  clusterMaxZoom: ZOOM_LEVEL_3,
+  clusterRadius: 30,
+});
+```
+
+Under the covers, this uses a technique called [hierarchical greedy clustering](https://blog.mapbox.com/clustering-millions-of-points-on-a-map-with-supercluster-272046ec5c97), which works quite well with many real-world datasets (like ours!)  We've chosen a `clusterRadius` of `30`, but you should feel free to play with that value!  Lower values mean more clusters, which means more precise locations at the cost of more clutter and lower performance.
+
+Now we're going to update our `collisionsPoints` layer, renaming it `collisionsClustered` in the process.  (You can name these however you like, but as with all programming tasks it's helpful to pick descriptive names!)
+
+```js
+map.addLayer({
+  id: 'collisionsClustered',
+  source: 'collisionsClustered',
+  type: 'circle',
+  minzoom: ZOOM_LEVEL_1,
+  maxzoom: ZOOM_LEVEL_3,
+  filter: ['has', 'point_count'],
+  paint: {
+    'circle-color': COLOR_COLLISION_FILL,
+    'circle-opacity': [
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      ZOOM_LEVEL_1, 0,
+      ZOOM_LEVEL_1 + 1, 1,
+    ],
+    'circle-radius': [
+      'step',
+      ['get', 'point_count'],
+      8,
+      10, 10,
+      100, 14,
+      1000, 16,
+    ],
+    'circle-stroke-color': COLOR_COLLISION_STROKE,
+    'circle-stroke-width': 1,
+  },
+});
+```
+
+Note the `filter` on this layer: we can use a Mapbox GL style expression here to only show specific points.  When building a clustered data source, Mapbox GL adds the `point_count` property to each cluster - as you might expect, this is the number of points in that cluster!  So this layer will only show _clusters_: individual points that didn't get clustered aren't included.  (We'll get to those in a bit.)
+
+There's also a new operator: `step`.  This is similar to `interpolate`, in that it takes a series of stops that describe how to map `input` values to `output` values.  In this case, though, we're not interpolating between `output` values.  As an example: using our expression above, a cluster with a `point_count` of `55` would have a radius of `10`, whereas if we'd used `interplate` with `['linear']` as the interpolator we'd instead get a radius of `12`.
 
 OK!  You've taken the first step towards moving from individual points
 to clusters at higher zoom levels.  We're not done yet, though: we still
@@ -482,7 +607,70 @@ cluster point counts.
 To get to the next step, you have to add two new layers - one for the
 cluster point counts, one to handle unclustered single points.
 
-Step 4c complete: cluster labels and unclustered points
+Let's start with the cluster point counts:
+
+```js
+map.addLayer({
+  id: 'collisionsClusteredCount',
+  source: 'collisionsClustered',
+  type: 'symbol',
+  minzoom: ZOOM_LEVEL_1,
+  maxzoom: ZOOM_LEVEL_3,
+  filter: ['has', 'point_count'],
+  layout: {
+    'text-field': '{point_count_abbreviated}',
+    'text-font': ['literal', ['Ubuntu Regular']],
+    'text-size': 12
+  },
+  paint: {
+    'text-color': COLOR_COLLISION_STROKE,
+  }
+});
+```
+
+This is our first layer of type `symbol`.  In Mapbox GL, `symbol` layers are used to show text and/or icons.  (You can actually show both: this is great for showing markers with numbers on them, for instance!)
+
+To show text, we need to provide a `text-field`.  In this case, we're using the `point_count_abbreviated` cluster property - this is similar to `point_count`, except that it's a `string` instead of a `number`, and it abbreviates larger values (e.g. `'2.5k'` instead of `'2513`.)
+
+We also need a `text-font`.  Similar to CSS `font-family`, this takes a _font stack_; each font is tried in sequence until a supported font is found.  But how do we provide an array of fonts?  After all, arrays are _already_ used as expressions.  That's where `literal` comes in: this is an operator that returns its first argument.  As an example:
+
+```js
+// this is an error: there's no `Ubuntu Regular` operator!
+['Ubuntu Regular']
+
+// this works: `literal` returns its first argument, in this case `['Ubuntu Regular']`
+['literal', ['Ubuntu Regular']]
+```
+
+There's also `text-size` and `text-color`.  Note that `text-field`, `text-font`, and `text-size` are _layout_ options while `text-color` is a _paint_ option.  If you try to put `text-color` in `layout`, or `text-size` in `paint`, Mapbox GL will give you an error.
+
+Now that we have text labels to show the number of points in each cluster, there's just one last piece to clean up: unclustered points.  They get their own layer:
+
+```js
+map.addLayer({
+  id: 'collisionsUnclustered',
+  source: 'collisionsClustered',
+  type: 'circle',
+  minzoom: ZOOM_LEVEL_1,
+  maxzoom: ZOOM_LEVEL_3,
+  filter: ['!', ['has', 'point_count']],
+  paint: {
+    'circle-color': COLOR_COLLISION_FILL,
+    'circle-opacity': [
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      ZOOM_LEVEL_1, 0,
+      ZOOM_LEVEL_1 + 1, 1,
+    ],
+    'circle-radius': 4,
+    'circle-stroke-color': COLOR_COLLISION_STROKE,
+    'circle-stroke-width': 1,
+  },
+});
+```
+
+Here we've used a `filter` with the `!` operator, which is a Boolean NOT operator: this layer only shows points that do NOT have a `point_count` property.
 
 Amazing!  By adding clusters to your map, you've reduced visual clutter,
 and you've actually added more information in the process - now users
@@ -503,12 +691,140 @@ To get to the next step, you have to define the `ksiAny` cluster
 property, use it to style clustered circles and text labels, and use the
 `ksi` property on unclustered points to style those.
 
-Step 4d complete: visual differentiation
+Let's start with the `ksiAny` _cluster property_, which we'll add to our existing `collisionsClustered` source using the `clusterProperties` option:
+
+```js
+map.addSource('collisionsClustered', {
+  type: 'geojson',
+  data: collisions,
+  cluster: true,
+  clusterMaxZoom: ZOOM_LEVEL_3,
+  clusterProperties: {
+    ksiAny: ['any', ['get', 'ksi']],
+  },
+  clusterRadius: 30,
+});
+```
+
+`any` is a Boolean OR operator.  This means that our clusters will have a new `ksiAny` property, which will be `true` if _any_ collision in that cluster is a KSI collision (and `false` otherwise).
+
+Now we can use `ksiAny` in our cluster layers and `ksi` in our unclustered layer.  Here's our clustered circle layer:
+
+```js
+map.addLayer({
+  id: 'collisionsClustered',
+  source: 'collisionsClustered',
+  type: 'circle',
+  minzoom: ZOOM_LEVEL_1,
+  maxzoom: ZOOM_LEVEL_3,
+  filter: ['has', 'point_count'],
+  paint: {
+    'circle-color': [
+      'case',
+      ['get', 'ksiAny'], COLOR_KSI_FILL,
+      COLOR_COLLISION_FILL,
+    ],
+    'circle-opacity': [
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      ZOOM_LEVEL_1, 0,
+      ZOOM_LEVEL_1 + 1, 1,
+    ],
+    'circle-radius': [
+      '*',
+      [
+        'case',
+        ['get', 'ksiAny'], 1.25,
+        1,
+      ],
+      [
+        'step',
+        ['get', 'point_count'],
+        8,
+        10, 10,
+        100, 14,
+        1000, 16,
+      ],
+    ],
+    'circle-stroke-color': [
+      'case',
+      ['get', 'ksiAny'], COLOR_KSI_STROKE,
+      COLOR_COLLISION_STROKE,
+    ],
+    'circle-stroke-width': [
+      'case',
+      ['get', 'ksiAny'], 2,
+      1,
+  },
+});
+```
+
+Looks like we need fill and stroke colors for KSI collisions:
+
+```js
+const COLOR_KSI_FILL = '#272727';
+const COLOR_KSI_STROKE = '#fefefe';
+```
+
+Now we can also use `ksiAny` with these colors in our cluster text label layer:
+
+```js
+'text-color': [
+  'case',
+  ['get', 'ksiAny'], COLOR_KSI_STROKE,
+  COLOR_COLLISION_STROKE,
+],
+```
+
+Finally, we update the unclustered layer, using `ksi` instead of `ksiAny` to style unclustered KSI collisions:
+
+```js
+map.addLayer({
+  id: 'collisionsUnclustered',
+  source: 'collisionsClustered',
+  type: 'circle',
+  minzoom: ZOOM_LEVEL_1,
+  maxzoom: ZOOM_LEVEL_3,
+  filter: ['!', ['has', 'point_count']],
+  paint: {
+    'circle-color': [
+      'case',
+      ['get', 'ksi'], COLOR_KSI_FILL,
+      COLOR_COLLISION_FILL,
+    ],
+    'circle-opacity': [
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      ZOOM_LEVEL_1, 0,
+      ZOOM_LEVEL_1 + 1, 1,
+    ],
+    'circle-radius': [
+      'case',
+      ['get', 'ksi'], 6,
+      4,
+    ],
+    'circle-stroke-color': [
+      'case',
+      ['get', 'ksi'], COLOR_KSI_STROKE,
+      COLOR_COLLISION_STROKE,
+    ],
+    'circle-stroke-width': [
+      'case',
+      ['get', 'ksi'], 2,
+      1,
+    ],
+  },
+});
+```
 
 And here we are!  You've taken this map all the way from a blank canvas
 to something that helps users see the big picture _and_ zoom in on
 details, all while drawing attention to the most important points in the
 dataset.
+
+# Now What?
 
 Is there more we could do?  Definitely!  Contextual popups, interactive
 filters (e.g. collisions that involve cyclists, pedestrians, etc.),

@@ -24,3 +24,509 @@ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash
 nvm install
 nvm use
 ```
+
+# Step-by-Step
+
+## Step 0: Starting page
+
+We have a simple full-page layout, plus a bit of scaffolding for Mapbox
+GL that we aren't yet using.
+
+To get to the next step, you have to clean up some of the
+eye-searing-ness and initialize the map properly!
+
+Let's start by getting rid of that `<h1>` element:
+
+```html
+<div id="map_container">
+  <!-- TODO: get rid of this! -->
+  <h1>MY EYES, THEY HURT</h1>
+</div>
+```
+
+Like other mapping libraries, Mapbox GL needs a _container element_ for its map.  In our case, that's `#map_container`, which has been styled in CSS to take up the whole page width and height.  We get a reference to this container, then attach it in options and initialize the map:
+
+```js
+function initMap() {
+  const $mapContainer = document.getElementById('map_container');
+  // or: document.querySelector('#map_container')
+
+  const options = {
+    // set the container in options
+    container: $mapContainer,
+    dragRotate: false,
+    pitchWithRotate: false,
+    renderWorldCopies: true,
+    style: basemapStyle,
+  };
+
+  // finally, create a new `mapboxgl.Map` instance using these options!
+  map = new mapboxgl.Map(options);
+}
+```
+
+Congratulations!  You've created your first Mapbox GL map.  We'll be
+building on this map incrementally over the rest of the workshop.
+
+## Step 1: Toronto map
+
+Now that we've shown our first map, let's focus on a specific area.
+Since we'll be using City of Toronto data, it makes sense to focus on
+Toronto.
+
+To get to the next step, you have to configure Mapbox GL to stay within
+Toronto city bounds!
+
+First, we need a _bounding box_ for Toronto:
+
+```js
+const BOUNDS_TORONTO = new mapboxgl.LngLatBounds(
+  new mapboxgl.LngLat(-79.639264937, 43.580995995),
+  new mapboxgl.LngLat(-79.115243191, 43.855457183),
+);
+```
+
+But wait!  The map defaults to _zoom level 0_, which shows the entire world.  We don't need to zoom out that far.  By default, it also allows the user to zoom in as far as _zoom level 23_ - that's _way_ too close for our purposes.  In addition to our bounding box, then, we need some _zoom bounds_:
+
+```js
+const ZOOM_LEVEL_0 = 10;
+const ZOOM_LEVEL_3 = 19;
+```
+
+Why `ZOOM_LEVEL_0` and `ZOOM_LEVEL_3`?  Similar to breakpoints in responsive design, these can be thought of as _zoom breakpoints_.  We'll be adding more breakpoints between these two.
+
+We can then use the bounding box and zoom bounds to keep the viewer within Toronto city limits:
+
+```js
+function initMap() {
+  // ...
+  const options = {
+    // add in these options:
+    center: BOUNDS_TORONTO.getCenter(),
+    maxBounds: BOUNDS_TORONTO,
+    minZoom: ZOOM_LEVEL_0,
+    maxZoom: ZOOM_LEVEL_3,
+    zoom: ZOOM_LEVEL_0,
+    // change this line (optional, but we don't need it to be `true`):
+    renderWorldCopies: false,
+    // ...
+  };
+  // ...
+}
+```
+
+Note that we've also set `center` and `zoom` - these tell Mapbox GL where the view should initially be placed.  (This is similar to the concept of a _camera_ in graphics / game programming: it's one particular view of a larger world!)
+
+Great!  By using bounding box and zoom limiting options, you've focused
+the map on Toronto.  This puts us in a good place to start adding City
+of Toronto data.
+
+## Step 2: GeoJSON data layers
+
+### Step 2a: loading collision data
+
+With the map focused on Toronto, we're ready to add some City of Toronto
+data!  To do that, though, we first have to load the data.
+
+To get to the next step, you have to load collision data into our page,
+then test that the data is loading properly.
+
+You might have noticed that the page we're building comes equipped with a function called `getJson()`:
+
+```js
+async function getJson(url) {
+  const response = await fetch(url);
+  return response.json();
+}
+```
+
+This function takes a URL and returns a `Promise` that resolves to the JSON response from issuing an HTTP `GET` request to that URL.
+
+You might _also_ have noticed another file in the `src/data` folder in this repository:
+
+```bash
+$ ls data
+collisions.geojson metadata.json      root.json
+```
+
+We're already using `metadata.json` and `root.json` to create the _basemap_ - these are borrowed from the [World Dark Gray Base](https://www.arcgis.com/home/item.html?id=a284a9b99b3446a3910d4144a50990f6) tile layer made available by [ESRI](https://esri.maps.arcgis.com/home/index.html).
+
+That's right!  Despite what the [Mapbox GL docs](https://docs.mapbox.com/mapbox-gl-js/api/) say, you _do not need_ a Mapbox access token to use Mapbox GL, nor do you need to use a map style hosted with Mapbox.  You can use any style from anywhere, so long as it conforms to the [Mapbox GL Style Specification](https://docs.mapbox.com/mapbox-gl-js/style-spec/).
+
+But enough about basemaps - we want data to put on the basemap!  That's where `collisions.geojson` comes in.  Let's add that to the datasets we fetch in `initMapbox()`:
+
+```js
+let collisions = null;
+
+async function initMapbox() {
+  const [
+    collisionsData,  // <--
+    metadata,
+    root,
+  ] = await Promise.all([
+    getJson('data/collisions.geojson'), // <--
+    getJson('data/metadata.json'),
+    getJson('data/root.json'),
+  ]);
+
+  basemapStyle = getStyle(metadata, root);
+  collisions = collisionsData; // <--
+}
+```
+
+Before we start using this data, let's check that it actually loads successfully.  To do this, we'll add an _event listener_ for the `load` event on the `mapboxgl.Map` object:
+
+```js
+function initMap() {
+  // ...
+
+  map = new mapboxgl.Map(options);
+  map.on('load', populateMap);
+}
+
+function populateMap() {
+  console.log(collisions);
+}
+```
+
+From the [Mapbox GL docs on `load`](https://docs.mapbox.com/mapbox-gl-js/api/map/#map.event:load):
+
+> Fired immediately after all necessary resources have been downloaded and the first visually complete rendering of the map has occurred.
+
+Awesome!  You've loaded collision data from the City of Toronto, and can
+see that we have roughly 175 000 points.  (The full dataset we have is
+much larger, but this is large enough to show off some of the techniques
+here.)  Now we can use that data in the map.
+
+### Step 2b: using collision data
+
+OK, we've got collision data loaded into the page, ready to use in our
+map.  In Mapbox GL, data is provided by _sources_, which are then used
+within _layers_ to render that data to the map.
+
+To get to the next step, you have to add a GeoJSON source using the
+newly loaded collisions data, then add a layer that uses that source.
+
+We add sources using `map.addSource()`:
+
+```js
+function populateMap() {
+  // don't need the `console.log()` anymore
+  map.addSource('collisions', {
+    type: 'geojson',
+    data: collisions,
+    buffer: 0,
+  });
+}
+```
+
+That's it!  Under the covers, Mapbox GL takes our 30 MB collisions dataset and indexes it into vector tiles, _right in the browser_.  (We don't _need_ the `buffer` option, but for `circle` layers it can speed up both vector tile indexing and subsequent rendering.)
+
+From there, we use sources in layers by using the `source` option:
+
+```js
+function populateMap() {
+  // ...
+  map.addLayer({
+    id: 'collisionsPoints',
+    source: 'collisions',
+    type: 'circle',
+    minzoom: ZOOM_LEVEL_0,
+    maxzoom: ZOOM_LEVEL_3,
+    paint: {
+      'circle-color': '#ef4848',
+      'circle-radius': 6.5,
+      'circle-stroke-color': '#773333',
+      'circle-stroke-width': 1,
+    },
+  });
+}
+```
+
+The `paint` options tell Mapbox GL how to style these circles.
+
+Whoa, that's a lot of data.  You've used the collision data in your
+first source and layer to show each collision as its own point.  It's a
+good start, but we can do a *lot* more to make it easier for users to
+understand and navigate this dataset!
+
+## Step 3: Heatmaps
+
+### Step 3a: switching to heatmap
+
+So we have a lot of data on a map, but we can't make sense of it!
+Fortunately, Mapbox GL has several features that help us visualize large
+datasets.  The first one we'll look at is _heatmap layers_: it's easy to
+configure a layer to show its data not as a series of individual points,
+but as a heatmap.
+
+To get to the next step, you have to update your layer configuration to
+turn it into a heatmap.
+
+First, though, let's pull our fill and stroke colors from before up into variables, so that we can reuse them throughout this workshop:
+
+```js
+const COLOR_COLLISION_FILL = '#ef4848';
+const COLOR_COLLISION_STROKE = '#773333';
+```
+
+Now we can adjust our layer as follows:
+
+```js
+map.addLayer({
+  id: 'collisionsHeatmap',
+  source: 'collisions',
+  type: 'heatmap',
+  minzoom: ZOOM_LEVEL_0,
+  maxzoom: ZOOM_LEVEL_3,
+  paint: {
+    'heatmap-color': COLOR_COLLISION_FILL,
+    'heatmap-weight': 0.03,
+  },
+});
+```
+
+Oh no!  You've traded out your beautiful circles for a uniform sea of
+eye-searing red.  Never fear, though: we'll work this into a usable
+heatmap over the next couple of substeps.
+
+### Step 3b: heatmap color ramps
+
+We can fix this sea of red by using Mapbox GL _style expressions_, which
+let us apply data-driven styling to map layers.  We'll tweak other
+things in a moment, but for now we'll focus our attention on
+`heatmap-color`.
+
+To get to the next step, you have to use style expressions to create a
+nice color ramp for your heatmap.
+
+Let's start with the color ramp.  Replace the value of the `heatmap-color` property with this expression:
+
+```js
+[
+  'interpolate',
+  ['linear'],
+  ['heatmap-density'],
+  0, COLOR_COLLISION_HEATMAP_ZERO,
+  0.5, COLOR_COLLISION_HEATMAP_HALF,
+  1, COLOR_COLLISION_FILL,
+]
+```
+
+To get this working, we'll also need to define two new colors:
+
+```js
+const COLOR_COLLISION_HEATMAP_ZERO = 'rgba(244, 227, 219, 0)';
+const COLOR_COLLISION_HEATMAP_HALF = '#f39268';
+```
+
+You can use these values or play around with your own.  The only requirement is that `COLOR_COLLISION_HEATMAP_ZERO` have an _alpha_ value of `0` - this is what allows the heatmap to fade to transparent wherever there aren't any points.
+
+OK, let's pick this apart a bit.  This is your first real look at Mapbox GL _style expressions_!  If you've ever worked with [Scheme / Racket](https://racket-lang.org/), [Clojure](https://clojure.org/), or other LISP-like languages, these expressions will look familiar: they're basically S-expressions in JSON array form.
+
+For the rest of us, though, that's not a helpful description!  A _style expression_ can be a value, as in `'#ef4848'` or `6.5`:
+
+```js
+{
+  'circle-color': '#ef4848',
+  'circle-radius': 6.5,
+  'circle-stroke-color': '#773333',
+  'circle-stroke-width': 1,
+}
+```
+
+It can also be an array, as in our heatmap example:
+
+```js
+[
+  'interpolate',
+  ['linear'],
+  ['heatmap-density'],
+  0, COLOR_COLLISION_HEATMAP_ZERO,
+  0.5, COLOR_COLLISION_HEATMAP_HALF,
+  1, COLOR_COLLISION_FILL,
+]
+```
+
+The first element of this array is an _operator_, and everything else is an _argument_ to that operator.  So `interpolate` is the operator, and from [the `interpolate` documentation](https://docs.mapbox.com/mapbox-gl-js/style-spec/expressions/#interpolate) we can see what it does:
+
+> Produces continuous, smooth results by interpolating between pairs of input and output values ("stops").
+
+The first argument is the `interpolation` function: here we're using `['linear']`, which is just a simple linear ramp.  (You can also use exponential or Bézier curves.)
+
+The next one, `['heatmap-density']`, is the `input`.  This is another array expression!  `heatmap-density` is a special operator that returns the _density_ of the heatmap at each pixel.  (Explaining _density_ here is beyond the scope of this workshop, but in layperson terms it's as though you blurred each point, and then added those blurred points up.)
+
+Next is a series of pairs of input and output values - these are the _stops_ mentioned in the documentation.  In our example, a density of `0.25` would map to a color halfway between `COLOR_COLLISION_HEATMAP_ZERO` and `COLOR_COLLISION_HEATMAP_HALF`.  (You could add even more stops and make rainbow scales, or tritone scales, or any of the [ColorBrewer](https://colorbrewer2.org/#type=sequential&scheme=BuGn&n=3) scales...)
+
+And that's it!  `interpolate` uses an `interpolator` to map an `input` value onto an `output` range, using the _stops_ configured in the expression.  In our case, we're using it to map heatmap density (the `input`) onto a color (the `output`).  We'll see several more examples of style expressions as we go along.
+
+Looking better now!  You can actually make out areas of higher and lower
+collision density now.  It's a bit blobby-looking, though, so we'll keep
+tweaking the style.
+
+### Step 3c: intensity and radius
+
+To help de-blobify our heatmap, we can adjust `heatmap-intensity` and
+`heatmap-radius` to values that better suit our data.  There isn't a
+hard and fast rule here - you'll have to experiment with your dataset
+(and users!) to see what values are most useful.  To make things
+interesting, we'll use `interpolate` again, this time with `zoom` to
+compensate for points spreading out as we zoom in.
+
+To get to the next step, you have to use more style expressions to set
+`heatmap-intensity` and `heatmap-radius`.
+
+To start with, we'll define another _zoom breakpoint_ at zoom level 14:
+
+```js
+const ZOOM_LEVEL_1 = 14;
+```
+
+Now we can use this new breakpoint in a style expression to vary the `heatmap-intensity` and `heatmap-radius`:
+
+```js
+'heatmap-intensity': [
+  'interpolate',
+  ['linear'],
+  ['zoom'],
+  ZOOM_LEVEL_0, 0.33,
+  ZOOM_LEVEL_1, 1,
+],
+'heatmap-radius': [
+  'interpolate',
+  ['linear'],
+  ['zoom'],
+  ZOOM_LEVEL_0, 5,
+  ZOOM_LEVEL_1, 10,
+],
+```
+
+There's `interpolate` again, this time with `['zoom']` as the `input`.  The `zoom` operator here returns the current map zoom level, so we can use it to change the style gradually as the user zooms in and out!  This is super-powerful: as we'll see again, this allows you to present different views of the same dataset at different scales.
+
+Great!  By reducing the visual noise of your heatmap, you've helped your
+users make sense of the data.  It's now much easier to see which areas
+have especially high numbers of collisions.
+
+### Step 3d: point weighting in heatmaps
+
+Some collisions are more serious than others.  In the
+`collisions.geojson` dataset, each collision has a property called
+`ksi`.  This stands for "killed or seriously injured": these are
+especially serious collisions that result in hospitalization or even
+death.
+
+As a Vision Zero city, Toronto's goal is to treat every single KSI
+collision as preventable.  That means improving everything from signage
+to lane markings to signal timings / phases to visibility, all in an
+attempt to create a safe environment for all road users.  Since
+pedestrians, cyclists, seniors, and other vulnerable road users are
+overrepresented in KSI statistics, their safety is given the highest
+priority.
+
+To get to the next step, you have to give KSI collisions the importance
+they deserve by _dramatically_ increasing their weight.
+
+Step 3d complete: point weighting in heatmaps
+
+Phew - you made it.  By tweaking the various parameters of heatmap
+layers, you've created a heatmap that better represents the data, and
+that appropriately draws attention to the most serious collisions.
+We're not done, though!  This heatmap is cool, but we can _still_
+improve upon this.
+
+## Step 4: Clustering and Visual Differentiation
+
+### Step 4a: heatmap and points!
+
+Heatmaps are great for seeing the big picture, but not so useful for
+getting a precise view of individual data points...so why not use both?
+
+To get to the next step, you have to set up another layer for points,
+then use style expressions to crossfade between the heatmap and
+individual points as the user zooms in.
+
+Step 4a complete: heatmap and points!
+
+Yay!  You made your first map with more than one layer, and you've even
+set up a cool crossfade effect between those layers as you zoom in.
+This is one of the great things about interactive maps: you can show
+more than one representation of the data to help users see both the big
+picture _and_ the details.
+
+### Step 4b: clustering
+
+Even with our new crossfade technique in place, we're still showing a
+_lot_ of visual clutter with all those points.  To handle large
+point-based datasets, Mapbox GL also supports _clustering_.  We'll use
+this feature to help tame visual clutter at higher zoom levels.  It'll
+take a bit of work, but it's worth it!
+
+To get to the next step, you have to add a clustered data source for
+collisions, then update our points layer to use that data source.
+
+Step 4b complete: clustering
+
+OK!  You've taken the first step towards moving from individual points
+to clusters at higher zoom levels.  We're not done yet, though: we still
+need to handle points that _don't_ make it into clusters, and it would
+be nice to show the point count on each cluster!
+
+### Step 4c: cluster labels and unclustered points
+
+Now that we have the basic clusters in place, let's finish this off!  In
+Mapbox GL, text labels use the `symbol` layer type.  (Icons _also_ use
+`symbol`, but we won't cover those in this workshop.)  Since each layer
+can only have one type, this means we need a separate layer to show
+cluster point counts.
+
+To get to the next step, you have to add two new layers - one for the
+cluster point counts, one to handle unclustered single points.
+
+Step 4c complete: cluster labels and unclustered points
+
+Amazing!  By adding clusters to your map, you've reduced visual clutter,
+and you've actually added more information in the process - now users
+can see exactly how many collisions are in a rough area, something that
+would have been impossible to see with all the overlapping points
+before.
+
+### Step 4d: visual differentiation
+
+We could still do more to help users pick out the most important data
+points.  Remember those KSI collisions?  We can use `clusterProperties`
+on our clustered data source to mark clusters that have _any_ KSI
+collisions in them.  Once we do that, we can use this property together
+with `case` expressions to dramatically increase the prominence of KSI
+collisions.
+
+To get to the next step, you have to define the `ksiAny` cluster
+property, use it to style clustered circles and text labels, and use the
+`ksi` property on unclustered points to style those.
+
+Step 4d complete: visual differentiation
+
+And here we are!  You've taken this map all the way from a blank canvas
+to something that helps users see the big picture _and_ zoom in on
+details, all while drawing attention to the most important points in the
+dataset.
+
+Is there more we could do?  Definitely!  Contextual popups, interactive
+filters (e.g. collisions that involve cyclists, pedestrians, etc.),
+additional datasets (e.g. traffic counts, road infrastructure projects,
+etc.) - all these (and more!) could be added to unlock new possibilities
+for understanding this dataset.
+
+There's also lots we could do to improve accessibility.  The red text on
+red circles is _definitely_ not WCAG AA compliant: it's too small, and
+the contrast isn't high enough.  The map has no non-visual alternatives
+(e.g. summary text), nor does it offer ways to navigate data by
+keyboard.  (This is a non-trivial problem, of course!)
+
+Finally: we're using a subset of the data.  Because of that, we can just
+load it directly into the browser and play around - but what if we were
+using the full 35-year dataset with 1.5 million data points, each of
+which have several dozen properties?  To handle that much data, we need
+to preprocess it: pre-generate vector tiles, pre-aggregate summary
+statistics, pre-cluster point datasets.  By doing this, we can scale
+these same techniques to work with millions (or even billions!) of data
+points.

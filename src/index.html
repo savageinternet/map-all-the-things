@@ -46,7 +46,8 @@ const COLOR_COLLISION_HEATMAP_ZERO = 'rgba(244, 227, 219, 0)';
 const COLOR_COLLISION_HEATMAP_HALF = '#f39268';
 const COLOR_COLLISION_FILL = '#ef4848';
 const COLOR_COLLISION_STROKE = '#773333';
-// TODO: define fill and stroke colours for KSI collisions
+const COLOR_KSI_FILL = '#272727';
+const COLOR_KSI_STROKE = '#fefefe';
 const ZOOM_LEVEL_0 = 10;
 const ZOOM_LEVEL_1 = 14;
 const ZOOM_LEVEL_3 = 19;
@@ -124,7 +125,9 @@ function populateMap() {
     data: collisions,
     cluster: true,
     clusterMaxZoom: ZOOM_LEVEL_3,
-    // TODO: use 'clusterProperties' to populate a 'ksiAny' property
+    clusterProperties: {
+      ksiAny: ['any', ['get', 'ksi']],
+    },
     clusterRadius: 30,
   });
   map.addLayer({
@@ -178,8 +181,11 @@ function populateMap() {
     maxzoom: ZOOM_LEVEL_3,
     filter: ['has', 'point_count'],
     paint: {
-      // TODO: pick color based on 'ksiAny'
-      'circle-color': COLOR_COLLISION_FILL,
+      'circle-color': [
+        'case',
+        ['get', 'ksiAny'], COLOR_KSI_FILL,
+        COLOR_COLLISION_FILL,
+      ],
       'circle-opacity': [
         'interpolate',
         ['linear'],
@@ -187,19 +193,32 @@ function populateMap() {
         ZOOM_LEVEL_1, 0,
         ZOOM_LEVEL_1 + 1, 1,
       ],
-      // TODO: use '*' to increase radius by 25% when 'ksiAny'
       'circle-radius': [
-        'step',
-        ['get', 'point_count'],
-        8,
-        10, 10,
-        100, 14,
-        1000, 16,
+        '*',
+        [
+          'case',
+          ['get', 'ksiAny'], 1.25,
+          1,
+        ],
+        [
+          'step',
+          ['get', 'point_count'],
+          8,
+          10, 10,
+          100, 14,
+          1000, 16,
+        ],
       ],
-      // TODO: pick color based on 'ksiAny'
-      'circle-stroke-color': COLOR_COLLISION_STROKE,
-      // TODO: increase stroke width to 2 when 'ksiAny'
-      'circle-stroke-width': 1,
+      'circle-stroke-color': [
+        'case',
+        ['get', 'ksiAny'], COLOR_KSI_STROKE,
+        COLOR_COLLISION_STROKE,
+      ],
+      'circle-stroke-width': [
+        'case',
+        ['get', 'ksiAny'], 2,
+        1,
+      ],
     },
   });
   map.addLayer({
@@ -215,8 +234,11 @@ function populateMap() {
       'text-size': 12
     },
     paint: {
-      // TODO: pick color based on 'ksiAny'
-      'text-color': COLOR_COLLISION_STROKE,
+      'text-color': [
+        'case',
+        ['get', 'ksiAny'], COLOR_KSI_STROKE,
+        COLOR_COLLISION_STROKE,
+      ],
     }
   });
   map.addLayer({
@@ -227,8 +249,11 @@ function populateMap() {
     maxzoom: ZOOM_LEVEL_3,
     filter: ['!', ['has', 'point_count']],
     paint: {
-      // TODO: pick color based on 'ksi' (NOT 'ksiAny', these aren't clustered!)
-      'circle-color': COLOR_COLLISION_FILL,
+      'circle-color': [
+        'case',
+        ['get', 'ksi'], COLOR_KSI_FILL,
+        COLOR_COLLISION_FILL,
+      ],
       'circle-opacity': [
         'interpolate',
         ['linear'],
@@ -236,12 +261,21 @@ function populateMap() {
         ZOOM_LEVEL_1, 0,
         ZOOM_LEVEL_1 + 1, 1,
       ],
-      // TODO: increase radius to 6 when 'ksi' (NOT 'ksiAny'!)
-      'circle-radius': 4,
-      // TODO: pick color based on 'ksi' (NOT 'ksiAny'!)
-      'circle-stroke-color': COLOR_COLLISION_STROKE,
-      // TODO: increase stroke width to 2 when 'ksi' (NOT 'ksiAny'!)
-      'circle-stroke-width': 1,
+      'circle-radius': [
+        'case',
+        ['get', 'ksi'], 6,
+        4,
+      ],
+      'circle-stroke-color': [
+        'case',
+        ['get', 'ksi'], COLOR_KSI_STROKE,
+        COLOR_COLLISION_STROKE,
+      ],
+      'circle-stroke-width': [
+        'case',
+        ['get', 'ksi'], 2,
+        1,
+      ],
     },
   });
 }
